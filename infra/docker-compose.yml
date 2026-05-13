@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rimn_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DEVICE=cpu
+      - DATABASE_URL=sqlite+aiosqlite:////app/rimn.db
+      - SECRET_KEY=${SECRET_KEY:-rimn-secret-change-in-prod}
+      - DEBUG=false
+      - ALLOWED_ORIGINS=["http://localhost:3000","http://frontend:3000"]
+    volumes:
+      - ./ml/checkpoints:/app/ml/checkpoints
+      - ./ml/results:/app/ml/results
+      - ./uploads:/app/uploads
+      - rimn_db:/app
+    depends_on: []
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: rimn_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  rimn_db:

@@ -1,0 +1,32 @@
+model:
+  text_encoder: microsoft/deberta-v3-base
+  clip_model: ViT-L-14
+  clip_pretrained: openai
+  latent_dim: 512
+  num_choices: 4
+  num_attn_heads: 8
+  dropout: 0.1
+
+training:
+  batch_size: 16
+  grad_accum_steps: 2
+  epochs: 10
+  lr: 2.0e-4
+  weight_decay: 0.01
+  warmup_steps: 200
+  max_grad_norm: 1.0
+  use_amp: true
+  patience: 3
+  label_smoothing: 0.1
+
+data:
+  dataset: scienceqa
+  cache_dir: ml/data/cache
+  max_train_samples: null
+  max_val_samples: 500
+  num_workers: 0
+
+paths:
+  checkpoint_dir: ml/checkpoints
+  results_dir: ml/results
+  log_dir: ml/logs

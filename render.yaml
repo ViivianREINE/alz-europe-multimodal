@@ -1,0 +1,21 @@
+# render.yaml — Render Blueprint for RIMN Backend
+services:
+  - type: web
+    name: rimn-backend
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements-render.txt
+    startCommand: cd .. && python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    rootDir: .
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+      - key: ENVIRONMENT
+        value: production

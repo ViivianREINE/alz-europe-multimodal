@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.next/
+out/
+.env
+.env.local
+.env.production.local
+
+# Database
+*.db
+*.sqlite3
+
+# Logs
+*.log
+
+# Build
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# ML artifacts (too large for git)
+ml/checkpoints/*.pt
+ml/checkpoints/*.pth
+ml/results/*.json
+ml_colab.zip
+
+# Misc
+*.zip

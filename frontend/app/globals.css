@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@import "tailwindcss";
+
+
+:root {
+  --bg-primary: #020408;
+  --bg-secondary: #0A1128;
+  --bg-card: rgba(10, 17, 40, 0.7);
+  --accent-primary: #00F5FF; /* Neon Cyan */
+  --accent-secondary: #39FF14; /* Neon Green */
+  --accent-glow: rgba(0, 245, 255, 0.4);
+  --text-primary: #E0F2F1;
+  --text-secondary: #80CBC4;
+  --text-muted: #455A64;
+  --border: rgba(0, 245, 255, 0.1);
+  --success: #39FF14;
+  --warning: #FFEA00;
+  --error: #FF1744;
+}
+
+@layer base {
+  body {
+    @apply bg-[#020408] antialiased selection:bg-cyan-500/30;
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 10px; border: 2px solid var(--bg-primary); }
+::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+/* Elite Glassmorphism */
+.glass-card {
+  background: rgba(10, 17, 40, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 245, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.9);
+}
+
+.glass-nav {
+  background: rgba(2, 4, 8, 0.9);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(0, 245, 255, 0.1);
+}
+
+/* Animated Gradient Borders */
+.gradient-border {
+  position: relative;
+  background: var(--bg-card);
+  border-radius: 12px;
+}
+
+.gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(45deg, var(--accent-primary), var(--accent-secondary), var(--accent-primary));
+  background-size: 200% 200%;
+  animation: border-flow 4s linear infinite;
+  border-radius: 13px;
+  z-index: -1;
+  opacity: 0.3;
+}
+
+@keyframes border-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Buttons */
+.btn-elite {
+  @apply relative overflow-hidden px-6 py-2.5 rounded-lg font-semibold transition-all duration-300 bg-cyan-600 hover:bg-cyan-500 text-black shadow-lg shadow-cyan-900/40 hover:shadow-cyan-400/40 hover:-translate-y-0.5 active:translate-y-0;
+}
+
+.btn-elite-outline {
+  @apply px-6 py-2.5 rounded-lg font-semibold border border-white/10;
+  color: var(--text-secondary);
+  transition: all 0.3s ease;
+}
+
+/* Typography */
+.font-outfit { font-family: 'Outfit', sans-serif; }
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+
+.heading-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-[#00F5FF] to-[#39FF14];
+}
+
+/* Dashboard Elements */
+.sidebar-item {
+  @apply flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 cursor-pointer;
+}
+
+.sidebar-item.active {
+  @apply text-cyan-400 bg-cyan-500/10 border border-cyan-500/20;
+}
+
+/* Progress Bars */
+.progress-bar-container { @apply w-full h-2 bg-slate-800 rounded-full overflow-hidden; }
+.progress-bar-fill { @apply h-full bg-cyan-500 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(0,245,255,0.5)]; }
+
+/* Tooltip & Badges */
+.badge-elite {
+  @apply px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest
+         bg-cyan-500/10 text-cyan-400 border border-cyan-500/20;
+}
+
+/* Chat Bubbles */
+.chat-bubble-ai { @apply bg-[#0A1128]/50 border border-cyan-500/10 p-4 rounded-2xl rounded-tl-none max-w-[80%]; }
+.chat-bubble-user { @apply bg-cyan-600 p-4 rounded-2xl rounded-tr-none max-w-[80%] self-end text-black; }
