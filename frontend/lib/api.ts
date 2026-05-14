@@ -4,7 +4,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 30000,
+  timeout: 120000,
 });
 
 // Attach JWT token to every request
@@ -36,7 +36,7 @@ export const authApi = {
   register: (data: { email: string; full_name: string; password: string; role: string }) =>
     api.post("/auth/register", data),
   me: () => api.get("/auth/me"),
-  updateProfile: (data: any) => api.put("/auth/profile", data),
+  updateProfile: (data: Record<string, unknown>) => api.put("/auth/profile", data),
 };
 
 // ── Inference ─────────────────────────────────────────────────────────────────
@@ -65,7 +65,7 @@ export const analyticsApi = {
 
 // ── Assignments ──────────────────────────────────────────────────────────────
 export const assignmentsApi = {
-  create: (data: any) => api.post("/assignments/", data),
+  create: (data: Record<string, unknown>) => api.post("/assignments/", data),
   list: () => api.get("/assignments/"),
 };
 

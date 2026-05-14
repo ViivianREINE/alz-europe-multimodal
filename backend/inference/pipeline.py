@@ -84,8 +84,8 @@ try:
     import google.generativeai as genai
     if settings.GEMINI_API_KEY:
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        # Using 1.5 Flash for production stability
-        gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+        # Using Gemini 3 Flash for elite accuracy
+        gemini_model = genai.GenerativeModel('gemini-3-flash-preview')
 except ImportError:
     print("WARNING: google-generativeai not installed. Gemini grading disabled.")
 
@@ -157,7 +157,7 @@ async def run_grading(question, student_answer, image_bytes=None, audio_bytes=No
                 "evaluation_summary": data.get("evaluation_summary", "Analyzed the submission for conceptual consistency and multimodal alignment."),
                 "evaluation_meta": {
                     "parameters": data.get("parameters_considered", ["Conceptual Accuracy", "Logical Consistency", "Diagrammatic Clarity"]),
-                    "method": "Recursive Modality Negotiation via Gemini 2.5 Flash",
+                    "method": "Recursive Modality Negotiation via Gemini 3 Flash",
                     "timestamp": "Real-time"
                 },
                 "modality_weights": [0.5, 0.5],
