@@ -351,7 +351,7 @@ export default function NewSubmissionPage() {
 
                 <div className="mt-6 flex justify-end">
                    <div className="badge-elite flex items-center gap-2">
-                     <Sparkles size={10} /> Model: RIMN-v1 + Gemini 2.5 Flash
+                     <Sparkles size={10} /> Model: RIMN-v1 + Gemini 1.5 Flash
                    </div>
                 </div>
               </motion.div>

@@ -7,6 +7,7 @@ import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -42,12 +43,17 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("Database initialized.")
 
-    # Pre-load model in background to avoid cold start on first request
-    try:
-        from backend.inference.pipeline import load_model
-        load_model()
-    except Exception as e:
-        logger.warning(f"Model pre-load failed (will load on first request): {e}")
+    # Pre-load model in background task so it doesn't block server startup
+    async def load_bg():
+        try:
+            from backend.inference.pipeline import load_model
+            load_model()
+            logger.info("Model pre-loading completed.")
+        except Exception as e:
+            logger.error(f"Error loading model: {e}")
+
+    asyncio.create_task(load_bg())
+    logger.info("Model pre-loading started in background task.")
 
     yield
 
