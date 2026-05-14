@@ -84,7 +84,8 @@ try:
     import google.generativeai as genai
     if settings.GEMINI_API_KEY:
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        gemini_model = genai.GenerativeModel('gemini-2.5-flash')
+        # Using 1.5 Flash for production stability
+        gemini_model = genai.GenerativeModel('gemini-1.5-flash')
 except ImportError:
     print("WARNING: google-generativeai not installed. Gemini grading disabled.")
 
@@ -94,6 +95,7 @@ _inference_engine = None
 def get_inference_engine():
     global _inference_engine
     if _inference_engine is None:
+        print("INFO: Loading local fallback model (this may take a minute)...")
         from backend.config import settings
         checkpoint = os.path.join(settings.CHECKPOINT_DIR, "rimn_best.pth")
         _inference_engine = RIMNInference(checkpoint if os.path.exists(checkpoint) else None)

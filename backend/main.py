@@ -43,17 +43,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("Database initialized.")
 
-    # Pre-load model in background task so it doesn't block server startup
-    async def load_bg():
-        try:
-            from backend.inference.pipeline import load_model
-            load_model()
-            logger.info("Model pre-loading completed.")
-        except Exception as e:
-            logger.error(f"Error loading model: {e}")
-
-    asyncio.create_task(load_bg())
-    logger.info("Model pre-loading started in background task.")
+    logger.info("RIMN ready. AI models will load on demand.")
 
     yield
 
