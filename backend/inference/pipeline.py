@@ -2,11 +2,15 @@
 RIMN Inference Pipeline
 Advanced Multimodal Negotiation for 90%+ Accuracy.
 """
-import torch
-import torch.nn.functional as F
+try:
+    import torch
+    import torch.nn.functional as F
+    from transformers import AutoTokenizer, AutoProcessor
+    from ml.models.rimn_mvp import RIMN_MVP
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
 from PIL import Image
-from transformers import AutoTokenizer, AutoProcessor
-from ml.models.rimn_mvp import RIMN_MVP
 import os
 
 class RIMNInference:
