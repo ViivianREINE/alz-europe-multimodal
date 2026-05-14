@@ -23,7 +23,7 @@ class FrozenTextEncoder(nn.Module):
     def __init__(self, model_name: str = "microsoft/deberta-v3-base"):
         super().__init__()
         logger.info(f"Loading text encoder: {model_name}")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
         self.model = AutoModel.from_pretrained(model_name)
         self.hidden_size = 768
 
