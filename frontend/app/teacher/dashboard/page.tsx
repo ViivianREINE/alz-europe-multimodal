@@ -18,24 +18,32 @@ import {
   X
 } from "lucide-react";
 import Link from "next/link";
-import { analyticsApi, submissionsApi } from "@/lib/api";
+import { analyticsApi, submissionsApi, assignmentsApi } from "@/lib/api";
 
 export default function TeacherDashboardPage() {
   const { user } = useAuthStore();
   const [analytics, setAnalytics] = useState<any>(null);
   const [recentSubmissions, setRecentSubmissions] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
+  const [isCreatingAssignment, setIsCreatingAssignment] = useState(false);
+  const [assignmentTitle, setAssignmentTitle] = useState("");
+  const [assignmentSubject, setAssignmentSubject] = useState("Biology");
+  const [assignmentDueDate, setAssignmentDueDate] = useState("");
+  const [assignmentDescription, setAssignmentDescription] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
         try {
-            const [analyticsRes, submissionsRes] = await Promise.all([
+            const [analyticsRes, submissionsRes, assignmentsRes] = await Promise.all([
                 analyticsApi.teacher(),
-                submissionsApi.list(10, 0)
+                submissionsApi.list(10, 0),
+                assignmentsApi.list(),
             ]);
             setAnalytics(analyticsRes.data);
             setRecentSubmissions(submissionsRes.data);
+            setAssignments(assignmentsRes.data);
         } catch (err) {
             console.error("Dashboard fetch error", err);
         } finally {
@@ -44,6 +52,30 @@ export default function TeacherDashboardPage() {
     };
     fetchData();
   }, []);
+
+  const handleCreateAssignment = async () => {
+    if (!assignmentTitle.trim()) return;
+    setIsCreatingAssignment(true);
+    try {
+      const res = await assignmentsApi.create({
+        title: assignmentTitle.trim(),
+        description: assignmentDescription.trim(),
+        subject: assignmentSubject,
+        due_date: assignmentDueDate || undefined,
+      });
+      setAssignments((prev) => [res.data, ...prev]);
+      setIsAssignmentModalOpen(false);
+      setAssignmentTitle("");
+      setAssignmentSubject("Biology");
+      setAssignmentDueDate("");
+      setAssignmentDescription("");
+    } catch (err) {
+      console.error("Assignment creation failed", err);
+      alert("Unable to create assignment. Please try again.");
+    } finally {
+      setIsCreatingAssignment(false);
+    }
+  };
 
   const classStats = [
     { label: "Class Average", value: analytics ? `${analytics.class_average}%` : "0%", icon: <TrendingUp size={18} />, color: "text-cyan-400" },
@@ -133,9 +165,9 @@ export default function TeacherDashboardPage() {
                       <td className="p-5">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center font-bold text-cyan-400 text-[10px]">
-                            {sub.user_name?.split(' ').map((n:any) => n[0]).join('') || "S"}
+                            {(sub.student_name || sub.user_name)?.split(' ').map((n:any) => n[0]).join('') || "S"}
                           </div>
-                          <span className="text-sm font-semibold text-slate-200">{sub.user_name || "Student"}</span>
+                          <span className="text-sm font-semibold text-slate-200">{sub.student_name || sub.user_name || "Student"}</span>
                         </div>
                       </td>
                       <td className="p-5">
@@ -188,6 +220,33 @@ export default function TeacherDashboardPage() {
                ))}
             </div>
 
+            <div className="glass-card p-6 rounded-2xl border-white/10">
+               <div className="flex items-center justify-between mb-4">
+                 <h3 className="text-xl font-bold text-white">Active Assignments</h3>
+               </div>
+               {assignments.length > 0 ? (
+                 <div className="space-y-4">
+                   {assignments.slice(0, 4).map((assignment) => (
+                     <div key={assignment.id} className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                       <div className="flex items-center justify-between gap-4">
+                         <div>
+                           <p className="text-sm font-bold text-white">{assignment.title}</p>
+                           <p className="text-xs text-slate-400 line-clamp-2 mt-1">{assignment.description || "No description provided."}</p>
+                         </div>
+                         <span className="text-[10px] uppercase font-semibold tracking-widest text-slate-500">{assignment.subject || "General"}</span>
+                       </div>
+                       <div className="mt-3 flex items-center justify-between text-[10px] uppercase tracking-widest text-slate-500">
+                         <span>Due {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : "No deadline"}</span>
+                         <span className="text-emerald-400">Active</span>
+                       </div>
+                     </div>
+                   ))}
+                 </div>
+               ) : (
+                 <p className="text-slate-500 text-sm">No assignments deployed yet. Create one for your students now.</p>
+               )}
+            </div>
+
             <div className="glass-card p-6 rounded-2xl bg-cyan-500/5 border-cyan-500/10">
                <div className="flex items-center gap-3 mb-3">
                   <UserCheck size={18} className="text-cyan-400" />
@@ -225,12 +284,22 @@ export default function TeacherDashboardPage() {
                         <div className="space-y-6">
                             <div>
                                 <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-2">Assignment Title</label>
-                                <input type="text" placeholder="e.g. Newton's Third Law Deep Dive" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500/50 outline-none transition-all" />
+                                <input
+                                  type="text"
+                                  value={assignmentTitle}
+                                  onChange={(e) => setAssignmentTitle(e.target.value)}
+                                  placeholder="e.g. Newton's Third Law Deep Dive"
+                                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500/50 outline-none transition-all"
+                                />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-2">Subject</label>
-                                    <select className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500/50 outline-none cursor-pointer">
+                                    <select
+                                      value={assignmentSubject}
+                                      onChange={(e) => setAssignmentSubject(e.target.value)}
+                                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500/50 outline-none cursor-pointer"
+                                    >
                                         <option className="bg-[#0f172a] text-white">Physics</option>
                                         <option className="bg-[#0f172a] text-white">Chemistry</option>
                                         <option className="bg-[#0f172a] text-white">Biology</option>
@@ -238,7 +307,12 @@ export default function TeacherDashboardPage() {
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-2">Due Date</label>
-                                    <input type="date" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500/50 outline-none" />
+                                    <input
+                                      type="date"
+                                      value={assignmentDueDate}
+                                      onChange={(e) => setAssignmentDueDate(e.target.value)}
+                                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500/50 outline-none"
+                                    />
                                 </div>
                             </div>
                             <div>
@@ -248,8 +322,7 @@ export default function TeacherDashboardPage() {
                                         onClick={async () => {
                                             try {
                                                 const text = await navigator.clipboard.readText();
-                                                const textarea = document.getElementById('assignment-desc') as HTMLTextAreaElement;
-                                                if (textarea) textarea.value = text;
+                                                setAssignmentDescription(text);
                                             } catch (err) {
                                                 console.error("Failed to paste", err);
                                             }
@@ -259,17 +332,21 @@ export default function TeacherDashboardPage() {
                                         <Plus size={12} /> Paste from Clipboard
                                     </button>
                                 </div>
-                                <textarea id="assignment-desc" rows={4} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500/50 outline-none resize-none" placeholder="Provide context or specific multimodal requirements..."></textarea>
+                                <textarea
+                                  value={assignmentDescription}
+                                  onChange={(e) => setAssignmentDescription(e.target.value)}
+                                  rows={4}
+                                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-cyan-500/50 outline-none resize-none"
+                                  placeholder="Provide context or specific multimodal requirements..."
+                                />
                             </div>
 
                             <button 
-                                onClick={() => {
-                                    alert("Assignment Created Successfully!");
-                                    setIsAssignmentModalOpen(false);
-                                }}
-                                className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-black py-4 rounded-xl shadow-[0_0_20px_rgba(0,245,255,0.2)] transition-all uppercase tracking-widest text-xs"
+                                onClick={handleCreateAssignment}
+                                disabled={isCreatingAssignment}
+                                className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-black py-4 rounded-xl shadow-[0_0_20px_rgba(0,245,255,0.2)] transition-all uppercase tracking-widest text-xs disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                Deploy Assignment
+                                {isCreatingAssignment ? "Deploying..." : "Deploy Assignment"}
                             </button>
                         </div>
                     </motion.div>

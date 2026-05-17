@@ -16,21 +16,37 @@ interface MasteryUpdate {
 export default function AssessmentComplete({ 
   score, 
   breakdown, 
-  mastery 
+  mastery, 
+  feedback,
+  evaluationSummary,
 }: { 
   score: number, 
   breakdown: StepBreakdown[], 
-  mastery: MasteryUpdate[] 
+  mastery: MasteryUpdate[],
+  feedback?: string,
+  evaluationSummary?: string,
 }) {
   return (
-    <div className="glass-card p-8 rounded-2xl space-y-8 animate-fade-in border-cyan-500/10">
+    <div className="glass-card p-8 rounded-2xl space-y-6 animate-fade-in border-cyan-500/10">
       <div className="flex items-center justify-between border-b border-white/5 pb-6">
-        <h3 className="text-2xl font-bold font-outfit text-white">Assessment Complete</h3>
+        <div>
+          <h3 className="text-2xl font-bold font-outfit text-white">Assessment Complete</h3>
+          {feedback && (
+            <p className="mt-3 text-sm leading-relaxed text-slate-300 max-w-2xl">
+              {feedback}
+            </p>
+          )}
+        </div>
         <div className="text-right">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1">Final Score</p>
           <div className="text-4xl font-black text-cyan-500 font-outfit shadow-cyan-500/20 drop-shadow-lg">{score}%</div>
         </div>
       </div>
+      {evaluationSummary && (
+        <div className="rounded-2xl bg-[#07111f] border border-white/5 p-4 text-sm text-slate-300">
+          {evaluationSummary}
+        </div>
+      )}
 
       <div className="space-y-4">
         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Step-wise Breakdown</p>

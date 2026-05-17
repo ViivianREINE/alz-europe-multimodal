@@ -19,7 +19,7 @@ try:
     import google.generativeai as genai
     if settings.GEMINI_API_KEY:
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-3-flash-preview')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         logger.info("Gemini Model initialized successfully.")
     else:
         logger.warning("GEMINI_API_KEY not set. Chat will use rule-based fallback.")
@@ -47,7 +47,7 @@ async def ask_assistant(
         try:
             import google.generativeai as genai
             genai.configure(api_key=settings.GEMINI_API_KEY)
-            model = genai.GenerativeModel('gemini-3-flash-preview')
+            model = genai.GenerativeModel('gemini-2.5-flash')
         except Exception as e:
             logger.error(f"Gemini init failed: {e}")
 

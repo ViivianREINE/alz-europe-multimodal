@@ -56,10 +56,14 @@ async def grade_submission(
 
     try:
         result = await run_grading(
-            question=question, student_answer=student_answer,
-            image_bytes=image_bytes, audio_bytes=audio_bytes, 
+            question=question,
+            student_answer=student_answer,
+            image_bytes=image_bytes,
+            audio_bytes=audio_bytes,
             reference_answer=reference_answer,
             choices=parsed_choices,
+            subject=subject,
+            topic=topic,
         )
         submission.status = "done"
         submission.score = result["score"]

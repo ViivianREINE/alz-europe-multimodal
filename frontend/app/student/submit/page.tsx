@@ -365,9 +365,11 @@ export default function NewSubmissionPage() {
                 <AssessmentComplete 
                   score={assessmentResult.score} 
                   breakdown={assessmentResult.reasoning_trace}
+                  feedback={assessmentResult.feedback?.message || assessmentResult.feedback}
+                  evaluationSummary={assessmentResult.evaluation_summary || assessmentResult.evaluationSummary}
                   mastery={[
-                    { topic: "Conceptual Logic", progress: assessmentResult.score },
-                    { topic: "Modality Fusion", progress: Math.min(assessmentResult.score + 10, 100) }
+                    { topic: "Conceptual Logic", progress: Math.round(assessmentResult.score) },
+                    { topic: "Modality Fusion", progress: Math.min(Math.round(assessmentResult.score) + 10, 100) }
                   ]}
                 />
 
@@ -378,7 +380,7 @@ export default function NewSubmissionPage() {
                         <h4 className="text-xs font-bold text-white uppercase tracking-widest">Evaluation Methodology</h4>
                     </div>
                     <p className="text-[11px] text-slate-500 leading-relaxed italic mb-4">
-                        "{assessmentResult.evaluation_summary}"
+                        "{assessmentResult.evaluation_summary || assessmentResult.evaluationSummary}"
                     </p>
                     <div className="flex flex-wrap gap-2">
                         {assessmentResult.evaluation_meta?.parameters?.map((p: string) => (

@@ -109,6 +109,37 @@ export default function StudentDashboardPage() {
           ))}
         </div>
 
+        <div className="glass-card p-6 rounded-3xl border-white/5">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="text-xl font-bold text-white">Active Assignments</h2>
+              <p className="text-sm text-slate-500">Assignments released by your teacher appear here.</p>
+            </div>
+            <Link href="/student/history" className="text-xs font-bold text-blue-500 hover:text-blue-400 uppercase tracking-widest transition-colors">View All</Link>
+          </div>
+          {assignments.length > 0 ? (
+            <div className="space-y-4">
+              {assignments.slice(0, 3).map((assignment) => (
+                <div key={assignment.id} className="glass-card p-4 rounded-2xl border-white/10 hover:border-cyan-500/20 transition-all">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-bold text-white">{assignment.title}</p>
+                      <p className="text-xs text-slate-400 mt-1 line-clamp-2">{assignment.description || "No assignment description available."}</p>
+                    </div>
+                    <span className="text-[10px] uppercase tracking-widest text-slate-500">{assignment.subject || "General"}</span>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between text-[10px] text-slate-500 uppercase tracking-widest">
+                    <span>Due {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : "No deadline"}</span>
+                    <span className="text-emerald-400">Active</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-500 text-sm">No active assignments yet. Once your teacher deploys a new task, it will appear here instantly.</p>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* Recent Activity */}
           <div className="lg:col-span-8 space-y-6">
@@ -118,7 +149,7 @@ export default function StudentDashboardPage() {
             </div>
             <div className="space-y-4">
               {recentTasks.map((task) => (
-                <Link key={task.id} href={`/student/results?id=${task.id}`} className="block">
+                <Link key={task.id} href={`/student/results/${task.id}`} className="block">
                     <div className="glass-card p-5 rounded-2xl flex items-center justify-between group hover:bg-white/[0.02] transition-all cursor-pointer">
                     <div className="flex items-center gap-5">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black transition-all

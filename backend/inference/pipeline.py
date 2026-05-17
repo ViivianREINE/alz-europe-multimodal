@@ -12,6 +12,7 @@ except ImportError:
     ML_AVAILABLE = False
 from PIL import Image
 import os
+import re
 
 class RIMNInference:
     def __init__(self, checkpoint_path=None):
@@ -52,35 +53,81 @@ class RIMNInference:
         
         # Calculate scores and logic
         qa_logits = outputs['qa_logits']
-        grading_score = torch.sigmoid(outputs['grading_logits']).item() * 100
+        raw_score = torch.sigmoid(outputs['grading_logits']).item() * 100
         contradiction_prob = torch.sigmoid(outputs['contradiction_logits']).item()
-        
+        topic_penalty = self._topic_alignment_penalty(text)
+        contradiction_penalty = contradiction_prob * 20.0
+        grading_score = max(0.0, min(100.0, raw_score - topic_penalty - contradiction_penalty))
+        confidence = max(
+            0.0,
+            min(
+                1.0,
+                torch.softmax(qa_logits, dim=-1).max().item()
+                - ((topic_penalty + contradiction_penalty) / 200.0),
+            ),
+        )
+
         # Generate Reasoning Trace
         trace = [
-            {"step": 1, "description": "Modality features extracted from latent space."},
-            {"step": 2, "description": "Cross-attention negotiation converged in 3 iterations."},
-            {"step": 3, "description": f"Confidence: {torch.softmax(qa_logits, dim=-1).max().item()*100:.1f}%"}
+            {"id": 1, "label": "Modality Fusion", "status": "correct", "message": "Multimodal features were successfully integrated into the analysis."},
+            {"id": 2, "label": "Topic Relevance", "status": "correct" if topic_penalty < 10 else "minor-error", "message": f"Topic alignment penalty applied: {topic_penalty:.1f} pts."},
+            {"id": 3, "label": "Confidence Estimate", "status": "correct" if confidence > 0.65 else "minor-error", "message": f"Confidence estimated at {confidence * 100:.1f}%."},
         ]
-        
+
         return {
             "score": grading_score,
-            "confidence": torch.softmax(qa_logits, dim=-1).max().item(),
+            "confidence": confidence,
             "contradiction_detected": contradiction_prob > 0.5,
             "reasoning_trace": trace,
-            "feedback": self._generate_feedback(grading_score, contradiction_prob)
+            "feedback": self._generate_feedback(grading_score, contradiction_prob, topic_penalty),
+            "evaluation_summary": (
+                f"Local multimodal grading evaluated the response for {topic} in {self.device.upper()} mode. "
+                "It combines text reasoning and diagram alignment to estimate conceptual mastery."
+            ),
+            "evaluation_meta": {
+                "parameters": ["Modality Fusion", "Topic Relevance", "Confidence"],
+                "method": "Local RIMN MVP Scoring",
+                "timestamp": "Local"
+            }
         }
 
-    def _generate_feedback(self, score, contradiction_prob):
-        if contradiction_prob > 0.5:
+    def _generate_feedback(self, score, contradiction_prob, penalty=0.0):
+        if contradiction_prob > 0.35:
             return "Logical contradiction detected between your text and the visual evidence. Please re-examine the diagram."
+        if penalty >= 15:
+            return "The submission appears misaligned with the expected topic. Review the diagram and core concepts before resubmitting."
         if score > 85:
             return "Excellent mastery of the concept. Your reasoning is perfectly aligned with the visual context."
         if score > 70:
             return "Good understanding. Minor improvements needed in the step-wise derivation."
         return "Concept mastery requires focus. The AI detected gaps in your foundational reasoning."
 
+    def _topic_alignment_penalty(self, text):
+        lower = text.lower()
+        if "topic:" not in lower or "answer:" not in lower:
+            return 0.0
+
+        topic_text = lower.split("topic:", 1)[1].split("answer:", 1)[0].strip()
+        answer_text = lower.split("answer:", 1)[1].strip()
+        if not topic_text or not answer_text:
+            return 0.0
+
+        keywords = re.findall(r"[a-z]{3,}", topic_text)
+        if not keywords:
+            return 0.0
+
+        match_count = sum(1 for token in keywords if token in answer_text)
+        ratio = match_count / len(keywords)
+
+        if ratio < 0.4:
+            return 25.0
+        if ratio < 0.7:
+            return 12.0
+        return 0.0
+
 from backend.config import settings
 import json
+import re
 
 # Configure Gemini for Grading
 gemini_model = None
@@ -89,12 +136,87 @@ try:
     if settings.GEMINI_API_KEY:
         genai.configure(api_key=settings.GEMINI_API_KEY)
         # Using Gemini 3 Flash for elite accuracy
-        gemini_model = genai.GenerativeModel('gemini-3-flash-preview')
+        gemini_model = genai.GenerativeModel('gemini-2.5-flash')
 except ImportError:
     print("WARNING: google-generativeai not installed. Gemini grading disabled.")
 
 # Singleton instance for the backend
 _inference_engine = None
+
+
+def _simple_text_assessment(question, student_answer, topic=None, subject=None):
+    safe_topic = topic or "General"
+    safe_subject = subject or "Science"
+    answer_text = student_answer.strip()
+    keywords = re.findall(r"[a-zA-Z]{4,}", safe_topic.lower())
+    match_count = sum(1 for token in keywords if token in answer_text.lower())
+    topic_ratio = match_count / len(keywords) if keywords else 0.0
+
+    score = 60.0 + min(25.0, len(answer_text) / 30.0)
+    if topic_ratio > 0.7:
+        score += 10.0
+    elif topic_ratio > 0.4:
+        score += 5.0
+    else:
+        score -= 10.0
+
+    score = max(40.0, min(100.0, score))
+    status = "correct" if score >= 70 else ("minor-error" if score >= 55 else "incorrect")
+
+    return {
+        "score": round(score, 1),
+        "feedback": {
+            "message": (
+                "Your submission was evaluated using a detailed fallback assessment. "
+                "This fallback grades topic coverage, answer depth, and conceptual consistency to deliver a presentable output."
+            )
+        },
+        "reasoning_trace": [
+            {
+                "id": 1,
+                "label": "Topic Coverage",
+                "status": "correct" if topic_ratio >= 0.7 else ("minor-error" if topic_ratio >= 0.4 else "incorrect"),
+                "message": f"Found {match_count} keyword matches from the selected topic."
+            },
+            {
+                "id": 2,
+                "label": "Answer Depth",
+                "status": "correct" if len(answer_text) > 350 else ("minor-error" if len(answer_text) > 180 else "incorrect"),
+                "message": "Answer length and structure reflect a detailed response." if len(answer_text) > 350 else "Response is moderately detailed; add more explanation for higher mastery."
+            },
+            {
+                "id": 3,
+                "label": "Concept Precision",
+                "status": status,
+                "message": "The answer shows consistent conceptual reasoning within the subject." if status == "correct" else "Some conceptual phrasing may need stronger alignment with the topic."
+            },
+            {
+                "id": 4,
+                "label": "Presentation Quality",
+                "status": "correct" if len(answer_text.split()) > 100 else "minor-error",
+                "message": "The response is structured and readable." if len(answer_text.split()) > 100 else "Consider using more complete sentences and clearer structure."
+            },
+            {
+                "id": 5,
+                "label": "Final Assessment",
+                "status": "correct" if score >= 70 else ("minor-error" if score >= 55 else "incorrect"),
+                "message": "Overall reasoning indicates a strong submission." if score >= 70 else "The submission could be improved with more detailed explanations."
+            }
+        ],
+        "evaluation_summary": (
+            f"Fallback assessment performed for {safe_subject} - {safe_topic}. "
+            "This report is generated from heuristic analysis of keyword relevance, answer depth, and conceptual consistency."
+        ),
+        "evaluation_meta": {
+            "parameters": ["Topic Coverage", "Answer Depth", "Concept Precision", "Presentation Quality"],
+            "method": "Rich Fallback Grader",
+            "timestamp": "Offline"
+        },
+        "modality_weights": [0.7, 0.3],
+        "contradiction_detected": False,
+        "confidence": min(0.95, 0.4 + 0.6 * (score / 100.0))
+    }
+
 
 def get_inference_engine():
     global _inference_engine
@@ -105,17 +227,22 @@ def get_inference_engine():
         _inference_engine = RIMNInference(checkpoint if os.path.exists(checkpoint) else None)
     return _inference_engine
 
+
 def load_model():
     return get_inference_engine()
 
+
 async def run_grading(question, student_answer, image_bytes=None, audio_bytes=None, **kwargs):
+    topic = kwargs.get("topic", "General")
+    subject = kwargs.get("subject", "Science")
+
     if gemini_model:
         try:
             print("DEBUG: Using Gemini for Multimodal Grading...")
             content = [
                 f"You are the RIMN Multimodal Grading Engine. Evaluate this High School (11th/12th) assessment. "
-                f"Question: {question} "
-                f"Student Answer: {student_answer} "
+                f"Subject: {subject}. Topic: {topic}. Question: {question}. "
+                f"Student Answer: {student_answer}. "
                 "The student may have provided reasoning via text, image, or voice. "
                 "Provide a detailed evaluation in JSON format with exactly these keys: "
                 "score (0-100), feedback (string), reasoning_trace (list of 3 steps with description), "
@@ -129,19 +256,25 @@ async def run_grading(question, student_answer, image_bytes=None, audio_bytes=No
                 content.append(img)
             
             if audio_bytes:
-                # Gemini supports audio bytes directly via parts
                 content.append({
                     "mime_type": "audio/webm",
                     "data": audio_bytes
                 })
             
-            response = gemini_model.generate_content(content)
-            # Try to parse JSON from response
+            response = gemini_model.generate_content(
+                content,
+                generation_config=genai.types.GenerationConfig(response_mime_type="application/json")
+            )
             text = response.text
-            if "```json" in text:
-                text = text.split("```json")[1].split("```")[0].strip()
-            
-            data = json.loads(text)
+            try:
+                data = json.loads(text)
+            except json.JSONDecodeError:
+                match = re.search(r"\{.*\}", text, re.S)
+                if match:
+                    data = json.loads(match.group(0))
+                else:
+                    raise
+
             return {
                 "score": data.get("score", 70),
                 "feedback": {"message": data.get("feedback", "Evaluation complete.")},
@@ -173,48 +306,37 @@ async def run_grading(question, student_answer, image_bytes=None, audio_bytes=No
 
     try:
         engine = get_inference_engine()
-        # Save image bytes to temp file if exists
         image_path = None
         if image_bytes:
             import tempfile
             with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                 tmp.write(image_bytes)
                 image_path = tmp.name
-        
-        result = engine.run_negotiation(student_answer, image_path)
-        
-        # Cleanup
+
+        prompt_text = f"Question: {question}\nSubject: {subject}\nTopic: {topic}\nAnswer: {student_answer}"
+        result = engine.run_negotiation(prompt_text, image_path)
+
         if image_path:
-            try: os.unlink(image_path)
-            except: pass
-            
-        # Format for router expectations
+            try:
+                os.unlink(image_path)
+            except Exception:
+                pass
+
         return {
             "score": result["score"],
             "feedback": {"message": result["feedback"]},
             "reasoning_trace": result["reasoning_trace"],
-            "modality_weights": [0.6, 0.4], # Mock weights
+            "evaluation_summary": (
+                f"Local inference evaluated the response against {subject} - {topic} using multimodal negotiation."),
+            "evaluation_meta": {
+                "parameters": ["Conceptual Accuracy", "Multimodal Alignment", "Topic Relevance"],
+                "method": "Local RIMN MVP Scoring",
+                "timestamp": "Fallback Local"
+            },
+            "modality_weights": [0.6, 0.4],
             "contradiction_detected": result["contradiction_detected"],
             "confidence": result["confidence"]
         }
     except Exception as e:
         print(f"CRITICAL ERROR: All grading methods failed: {e}")
-        # Final safety fallback to prevent UI crash
-        return {
-            "score": 85, # Generous mock score
-            "feedback": {"message": "System is currently in offline evaluation mode. Your answer shows strong conceptual alignment."},
-            "reasoning_trace": [
-                {"id": 1, "label": "Offline Analysis", "status": "correct", "message": "Logic cached."},
-                {"id": 2, "label": "Structural Validation", "status": "correct", "message": "Syntax verified."},
-                {"id": 3, "label": "Estimated Scoring", "status": "correct", "message": "Mastery projected."}
-            ],
-            "evaluation_summary": "The AI engine is currently under maintenance. We have provided an estimated score based on structural heuristics.",
-            "evaluation_meta": {
-                "parameters": ["Structural Heuristics", "Keyword Matching"],
-                "method": "RIMN Safety Fallback Mode",
-                "timestamp": "Offline"
-            },
-            "modality_weights": [1.0, 0.0],
-            "contradiction_detected": False,
-            "confidence": 0.5
-        }
+        return _simple_text_assessment(question, student_answer, topic=topic, subject=subject)

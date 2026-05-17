@@ -8,7 +8,7 @@ from typing import Optional
 from collections import defaultdict
 
 from backend.db.database import get_db
-from backend.db.models import User, Submission, MasteryRecord
+from backend.db.models import User, Submission, MasteryRecord, Role
 from backend.auth.models import get_current_user, require_teacher
 
 # ── Submissions Router ────────────────────────────────────────────────────────
@@ -22,6 +22,29 @@ async def list_submissions(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if current_user.role in (Role.teacher, Role.admin):
+        result = await db.execute(
+            select(Submission, User.full_name)
+            .join(User, Submission.user_id == User.id)
+            .order_by(Submission.created_at.desc())
+            .limit(limit).offset(offset)
+        )
+        rows = result.all()
+        return [
+            {
+                "id": row[0].id,
+                "question": row[0].question[:80] + "..." if len(row[0].question) > 80 else row[0].question,
+                "score": row[0].score,
+                "status": row[0].status,
+                "subject": row[0].subject,
+                "topic": row[0].topic,
+                "created_at": str(row[0].created_at),
+                "user_name": row[1] or "Student",
+                "student_name": row[1] or "Student",
+            }
+            for row in rows
+        ]
+
     result = await db.execute(
         select(Submission)
         .where(Submission.user_id == current_user.id)
@@ -31,9 +54,13 @@ async def list_submissions(
     subs = result.scalars().all()
     return [
         {
-            "id": s.id, "question": s.question[:80] + "..." if len(s.question) > 80 else s.question,
-            "score": s.score, "status": s.status, "subject": s.subject,
-            "topic": s.topic, "created_at": str(s.created_at),
+            "id": s.id,
+            "question": s.question[:80] + "..." if len(s.question) > 80 else s.question,
+            "score": s.score,
+            "status": s.status,
+            "subject": s.subject,
+            "topic": s.topic,
+            "created_at": str(s.created_at),
         }
         for s in subs
     ]
